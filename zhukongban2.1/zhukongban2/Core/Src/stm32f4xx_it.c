@@ -28,13 +28,13 @@
 /* USER CODE BEGIN TD */
 
 extern uint8_t rx1_buffer[RX_BUFFER_SIZE];
-extern uint8_t rx2_buffer[RX_BUFFER_SIZE];
+extern uint8_t rx4_buffer[RX_BUFFER_SIZE];
 extern uint8_t rx3_buffer[RX_BUFFER_SIZE];
 extern uint16_t rx1_length;
-extern uint16_t rx2_length;
+extern uint16_t rx4_length;
 extern uint16_t rx3_length;
 extern uint8_t rx1_flag;
-extern uint8_t rx2_flag;
+extern uint8_t rx4_flag;
 extern uint8_t rx3_flag;
 extern uint8_t com_flag;
 extern uint8_t motor_flag;
@@ -69,18 +69,18 @@ uint16_t i;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_tim2_up_ch4;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
-extern DMA_HandleTypeDef hdma_uart5_rx;
-extern DMA_HandleTypeDef hdma_uart5_tx;
+extern TIM_HandleTypeDef htim4;
+extern DMA_HandleTypeDef hdma_uart4_rx;
+extern DMA_HandleTypeDef hdma_uart4_tx;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
-extern DMA_HandleTypeDef hdma_usart2_rx;
-extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
 extern DMA_HandleTypeDef hdma_usart3_tx;
+extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart1;
-extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 
@@ -239,20 +239,6 @@ void EXTI2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 stream0 global interrupt.
-  */
-void DMA1_Stream0_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Stream0_IRQn 0 */
-
-  /* USER CODE END DMA1_Stream0_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_uart5_rx);
-  /* USER CODE BEGIN DMA1_Stream0_IRQn 1 */
-
-  /* USER CODE END DMA1_Stream0_IRQn 1 */
-}
-
-/**
   * @brief This function handles DMA1 stream1 global interrupt.
   */
 void DMA1_Stream1_IRQHandler(void)
@@ -264,6 +250,20 @@ void DMA1_Stream1_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream1_IRQn 1 */
 
   /* USER CODE END DMA1_Stream1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 stream2 global interrupt.
+  */
+void DMA1_Stream2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Stream2_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_rx);
+  /* USER CODE BEGIN DMA1_Stream2_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream2_IRQn 1 */
 }
 
 /**
@@ -281,31 +281,17 @@ void DMA1_Stream3_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 stream5 global interrupt.
+  * @brief This function handles DMA1 stream4 global interrupt.
   */
-void DMA1_Stream5_IRQHandler(void)
+void DMA1_Stream4_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Stream4_IRQn 0 */
 
-  /* USER CODE END DMA1_Stream5_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart2_rx);
-  /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
+  /* USER CODE END DMA1_Stream4_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_tx);
+  /* USER CODE BEGIN DMA1_Stream4_IRQn 1 */
 
-  /* USER CODE END DMA1_Stream5_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 stream6 global interrupt.
-  */
-void DMA1_Stream6_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Stream6_IRQn 0 */
-
-  /* USER CODE END DMA1_Stream6_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart2_tx);
-  /* USER CODE BEGIN DMA1_Stream6_IRQn 1 */
-
-  /* USER CODE END DMA1_Stream6_IRQn 1 */
+  /* USER CODE END DMA1_Stream4_IRQn 1 */
 }
 
 /**
@@ -351,6 +337,20 @@ void TIM3_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART1 global interrupt.
   */
 void USART1_IRQHandler(void)
@@ -367,10 +367,9 @@ void USART1_IRQHandler(void)
     rx1_length = sizeof(rx1_buffer) - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
 
     // 处理接收到的数据
-    for( i = 0; i < rx1_length; i++)
-    {
-      // 这里可以添加具体的数据处理逻辑
-    }             
+   
+			HAL_UART_Transmit_DMA(&huart3, rx1_buffer, rx1_length);
+              
 		rx1_flag =1;
 
     // 重新启动DMA接收
@@ -381,39 +380,6 @@ void USART1_IRQHandler(void)
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART2 global interrupt.
-  */
-void USART2_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART2_IRQn 0 */
-	if(__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE) != RESET)
-		{
-			__HAL_UART_CLEAR_IDLEFLAG(&huart2);
-
-			// 停止DMA传输
-			HAL_UART_DMAStop(&huart2);
-
-			// 计算接收到的数据长度
-			rx2_length = sizeof(rx2_buffer) - __HAL_DMA_GET_COUNTER(&hdma_usart2_rx);
-
-			// 处理接收到的数据
-			for( i = 0; i < rx2_length; i++)
-			{
-				// 这里可以添加具体的数据处理逻辑
-			}
-			rx2_flag =1;
-
-			// 重新启动DMA接收
-			HAL_UART_Receive_DMA(&huart2, rx2_buffer, sizeof(rx2_buffer));
-		}
-  /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
-  /* USER CODE BEGIN USART2_IRQn 1 */
-
-  /* USER CODE END USART2_IRQn 1 */
 }
 
 /**
@@ -440,7 +406,7 @@ void USART3_IRQHandler(void)
 		rx3_flag =1;
 
     // 重新启动DMA接收
-    HAL_UART_Receive_DMA(&huart3, rx3_buffer, sizeof(rx3_buffer));
+    HAL_UART_Receive_DMA(&huart3, rx3_buffer, sizeof(rx3_buffer));//HAL库的统一的所有中断事件分发器,直接调用用户回调函数
   }
 	
   /* USER CODE END USART3_IRQn 0 */
@@ -458,10 +424,43 @@ void DMA1_Stream7_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream7_IRQn 0 */
 
   /* USER CODE END DMA1_Stream7_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_uart5_tx);
+  HAL_DMA_IRQHandler(&hdma_tim2_up_ch4);
   /* USER CODE BEGIN DMA1_Stream7_IRQn 1 */
 
   /* USER CODE END DMA1_Stream7_IRQn 1 */
+}
+
+/**
+  * @brief This function handles UART4 global interrupt.
+  */
+void UART4_IRQHandler(void)
+{
+  /* USER CODE BEGIN UART4_IRQn 0 */
+	if(__HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE) != RESET)
+  {
+    __HAL_UART_CLEAR_IDLEFLAG(&huart4);
+    // 停止DMA传输
+    HAL_UART_DMAStop(&huart4);
+
+    // 计算接收到的数据长度
+    rx4_length = sizeof(rx4_buffer) - __HAL_DMA_GET_COUNTER(&hdma_uart4_rx);
+
+    // 处理接收到的数据
+   
+    
+    HAL_UART_Transmit_DMA(&huart3, rx4_buffer, rx4_length);
+    
+		rx4_flag =1;
+
+    // 重新启动DMA接收
+    HAL_UART_Receive_DMA(&huart4, rx4_buffer, sizeof(rx4_buffer));
+  }
+	
+  /* USER CODE END UART4_IRQn 0 */
+  HAL_UART_IRQHandler(&huart4);
+  /* USER CODE BEGIN UART4_IRQn 1 */
+
+  /* USER CODE END UART4_IRQn 1 */
 }
 
 /**
