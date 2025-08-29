@@ -41,6 +41,8 @@ uint8_t fault_buffer1[11]= {0x5A, 0x01, 0x08, 0x88, 0x88,
                        0x00, 0x00, 0x01, 0x00, 0x00, 0x55};
 uint8_t fault_buffer2[11]= {0x5A, 0x01, 0x08, 0x99, 0x99,
                        0x00, 0x00, 0x01, 0x00, 0x00, 0x55};
+uint8_t fault_buffer3[11]= {0x5A, 0x01, 0x08, 0xAA, 0xAA,
+                       0x00, 0x00, 0x01, 0x00, 0x00, 0x55};
 											 
 uint16_t rx1_length;
 uint16_t rx4_length;
@@ -291,6 +293,7 @@ int main(void)
 		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == GPIO_PIN_RESET && Gybpre_key==1 )  //高压板的返回有效信号，PA5,一次连续的低电平只Gybpre_flag=1，一次
 		{
 			Gybpre_key=0;
+			Gybpre_flag=1;
 		}
 		else if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == GPIO_PIN_SET)
 		{
@@ -318,8 +321,18 @@ int main(void)
 					}
 			}
 	
+			if (sync_out==1)	
+			{
+				if (SynState==n_total)
+				{
+					SynState=0;
+					HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
+					//HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //怎么通知高压板结束准备，还未定。金想要让上位机通过串口发命令
+					HAL_UART_Transmit(&huart3, fault_buffer3, 11 ,0xFFFF );	
+				}
+			}
 		
-		HAL_Delay(500);   
+		HAL_Delay(50);   
 
     /* USER CODE END WHILE */
 
@@ -375,7 +388,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-//外部中断回调函数，其实依然可以使用查询方式读取信号状态,目前中断过多，可以删除
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)  
 {  
 	 if(GPIO_Pin == GPIO_PIN_2)   //EMC-急停告知;PE2
@@ -388,7 +401,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		HAL_UART_Transmit(&huart3, fault_buffer0, 11 ,0xFFFF );
 	 }	 
 	
-	 if(GPIO_Pin == GPIO_PIN_5)   //高压板报错，Fault。PA5
+	 if(GPIO_Pin == GPIO_PIN_5)   //高压板报错，Fault。PA5。高压板报错需要急停吗？
    {
 		fault_flag = 1;
 		  HAL_TIM_Base_Stop_IT(&htim4);  	//  停止发PWM
@@ -405,7 +418,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			uint8_t data[8];
 			Send_motor1(p1, data);//计算校验位CRC
 			HAL_UART_Transmit_DMA(&huart1, data, sizeof(data));  //电机急停止
-				
 			HAL_UART_Transmit(&huart3, fault_buffer2, 11 ,0xFFFF );	
 	 }
 	 
@@ -424,12 +436,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_TIM_Base_Start_IT(&htim3);
 					SynState ++;
 				}
-				else
-				{
-					SynState=0;
-					HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
-					HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //IO口通知高压板结束准备
-				}
+				
 			}
 	 }
 	 
@@ -462,7 +469,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				SynState=0;
 		    HAL_TIM_Base_Stop_IT(&htim4);  	//  停止定时器（避免计数干扰）
 				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
-				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //IO口通知高压板结束准备
+			//	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //IO口通知高压板结束准备
+				HAL_UART_Transmit(&huart3, fault_buffer3, 11 ,0xFFFF );	
 			}
     }
 }
