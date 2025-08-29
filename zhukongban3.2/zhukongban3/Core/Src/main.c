@@ -269,7 +269,7 @@ int main(void)
 				HAL_UART_Transmit_DMA(&huart1, rx3_buffer, rx3_length);   //转发给电机
 			}
 		}
-		
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
 	 
 		// 查询电机位置，但是读的是定时器的计数和电机无关
     pos = __HAL_TIM_GET_COUNTER(&htim2);
@@ -318,6 +318,7 @@ int main(void)
 						expose_flag =0;
 						HAL_TIM_Base_Start_IT(&htim4);  //启动计时器4计数，产生PWM
 						HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET); //蜂鸣器
+						HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); //板子上的蜂鸣器
 					}
 			}
 	
@@ -327,6 +328,7 @@ int main(void)
 				{
 					SynState=0;
 					HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
+					HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); //板子上的蜂鸣器
 					//HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //怎么通知高压板结束准备，还未定。金想要让上位机通过串口发命令
 					HAL_UART_Transmit(&huart3, fault_buffer3, 11 ,0xFFFF );	
 				}
@@ -469,6 +471,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				SynState=0;
 		    HAL_TIM_Base_Stop_IT(&htim4);  	//  停止定时器（避免计数干扰）
 				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); //板子上的蜂鸣器
 			//	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_RESET); //IO口通知高压板结束准备
 				HAL_UART_Transmit(&huart3, fault_buffer3, 11 ,0xFFFF );	
 			}
