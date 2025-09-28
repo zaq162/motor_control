@@ -42,9 +42,7 @@ uint8_t rx3_buffer[RX_BUFFER_SIZE];   //接上位机，串口3 422
 uint8_t tim2_buffer[5];
 uint8_t TXBUF[14]= {0x55, 0xAA, 0x0E, 0x00, 0x00, 0x00,
                         0x02, 0x01, 0x05, 0x00, 0x01, 0x00, 0x00, 0x00};
-
-												
-												
+	
 uint16_t rx1_length;
 uint16_t rx4_length;
 uint16_t rx3_length;
@@ -61,9 +59,7 @@ uint16_t k =0;
 uint8_t expose_flag = 0;    //曝光标志位
 uint8_t pre_flag = 0;       //预备标志位
 uint8_t Gybpre_flag =0;     //高压板是否准备
-uint8_t Syn_flag =0;        //同步标志位,没用到
-uint8_t over_flag = 0;      //结束标志位，没用到
-uint8_t mode_flag = 0;      //										 
+uint8_t mode_flag = 0;      //模式									 
 uint8_t motor_revflag=0;    //电机反转到位
 uint8_t detector_flag=0;    //探测器的连接、参数设置之后点“开始采集按钮”
 uint8_t Gybpre_key=1; 			//高压板返回信号的按键
@@ -155,26 +151,22 @@ int main(void)
   MX_RTC_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_UART4_Init();
   MX_TIM4_Init();
   MX_TIM9_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-
-//	HAL_UART_Receive_IT(&huart1,rx_buffer ,sizeof(rx_buffer));  //中断接收
 
 // 使能空闲中断
   __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-  __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+  __HAL_UART_ENABLE_IT(&huart5, UART_IT_IDLE);
 	__HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
 
-//  // 启动DMA接收
+// 启动DMA接收
   HAL_UART_Receive_DMA(&huart1, rx1_buffer, sizeof(rx1_buffer));
-	HAL_UART_Receive_DMA(&huart4, rx4_buffer, sizeof(rx4_buffer));
+	HAL_UART_Receive_DMA(&huart5, rx4_buffer, sizeof(rx4_buffer));
 	HAL_UART_Receive_DMA(&huart3, rx3_buffer, sizeof(rx3_buffer));
 
-
-
-	HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);   // 一次启动所有通道
+	HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);   
 	__HAL_TIM_SET_COUNTER(&htim2,0);  //清零定时器2的计数值
 	
 	ringbuffer rbuf;
@@ -232,7 +224,7 @@ while (1)
 			rx3_flag = 0;
 		
 			if(rx3_buffer[0] ==0x55 && rx3_buffer[7] == 0x02)  //给主控板
-			{
+		   	{
 						// 注入数据
 					for (int i = 0; i < sizeof(rx3_buffer); i++) 
 					{
@@ -247,10 +239,10 @@ while (1)
 					
 					HAL_UART_Transmit(&huart3, g_decoder.buf, rx3_length ,0xFFFF );
 			
-			} 
+			   } 
 		  else if(rx3_buffer[0] ==0x55 && rx3_buffer[7] == 0x03)    //给高压板
 					{
-						HAL_UART_Transmit_DMA(&huart4, rx3_buffer, rx3_length);  
+						HAL_UART_Transmit_DMA(&huart5, rx3_buffer, rx3_length);  
 					}	
 		  else if(rx3_buffer[0] == 0x01)  	//给电机
 					{
@@ -264,7 +256,7 @@ while (1)
 		 
 
 	 
-		// 查询电机位置，但是读的是定时器的计数和电机无关
+		// 查询电机位置，读定时器的计数值
     pos = __HAL_TIM_GET_COUNTER(&htim2);
 		diretion=__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2);
 		tim2_buffer[0] =diretion;
@@ -274,8 +266,6 @@ while (1)
     tim2_buffer[4] = (uint8_t)((pos >> 24) & 0xFF);
     tim2_length = 5;
 		HAL_UART_Transmit(&huart3, tim2_buffer, tim2_length ,0xFFFF );
-	
-		
 	
 		
 		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == GPIO_PIN_RESET )  //高压板的返回有效信号，PA6
@@ -302,7 +292,7 @@ while (1)
 						state = 0;
 						expose_flag =0;  //用中断函数的另一个边沿触发也可以
 						HAL_TIM_Base_Start_IT(&htim4);  //启动计时器4计数，产生脉冲
-						//HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET); //蜂鸣器
+						HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //BELL,黄色的灯
 						HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2); //板子上的蜂鸣器
 					}
 			}
@@ -320,9 +310,7 @@ while (1)
 				}
 			}
 		
-			
-	 
-		//HAL_Delay(500);   
+		HAL_Delay(500);   
   }
     /* USER CODE END WHILE */
 
@@ -381,22 +369,14 @@ void SystemClock_Config(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)  
 {  
-	 if(GPIO_Pin == GPIO_PIN_2)   //EMC-急停告知;PE2
+	if(GPIO_Pin == GPIO_PIN_2)   //EMC-急停告知;PE2；上升沿
    {
 		CMD_handlder_tx(TXBUF,0X05);
 	 }
 
 	 if(GPIO_Pin == GPIO_PIN_4)   //  PA4高压板的KV85
    {
-			/*	volatile uint32_t pa4_last_irq_tick = 0;  
-				 uint32_t now = HAL_GetTick();      // 获取系统 tick（1 ms 分辨率）
-        if (now - pa4_last_irq_tick < 20)  // 20 ms 简单消抖
-            return;
-        pa4_last_irq_tick = now;*/
-	
-
-  
-        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         // 高电平 → 上升沿
+        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         // 上升沿
         {
 					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
 					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
@@ -422,50 +402,60 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         }
         else                                
         {
-            /* 下降沿处理 */
+          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         return;
           CMD_handlder_tx(TXBUF,0X04);	//报错修好
         }
 	 }	 
 	
 	 if(GPIO_Pin == GPIO_PIN_5)   //高压板报错，Fault。PA5。
    {
-		 if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET)         // 高电平 → 上升沿
+		 if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_SET)         // 上升沿
         {
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_RESET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_RESET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_RESET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_RESET)         return;
 		 
-		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_SET);
-			HAL_TIM_Base_Stop_IT(&htim4);  	//  停止发PWM
-		 
-			DataFrame_Motor1 frame1 = 
-			{
-					.Header = 0x01,
-					.Cmd = 0x05,
-					.addr = 0x0123,
-					.data = 0xFF00
-				};
-			
-			DataFrame_Motor1 *p1 = &frame1;
-			uint8_t data[8];
-			Send_motor1(p1, data);//计算校验位CRC
-			HAL_UART_Transmit_DMA(&huart1, data, sizeof(data));  //电机急停止
-			CMD_handlder_tx(TXBUF,0X06);
-			}
+					HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_SET);
+					HAL_TIM_Base_Stop_IT(&htim4);  	//  停止发PWM
+				 
+					DataFrame_Motor1 frame1 = 
+					{
+							.Header = 0x01,
+							.Cmd = 0x05,
+							.addr = 0x0123,
+							.data = 0xFF00
+						};
+					
+					DataFrame_Motor1 *p1 = &frame1;
+					uint8_t data[8];
+					Send_motor1(p1, data);//计算校验位CRC
+					HAL_UART_Transmit_DMA(&huart1, data, sizeof(data));  //电机急停止
+					CMD_handlder_tx(TXBUF,0X06);
+		  	}
 				
 			  else                               
         {
-            /* 下降沿处理 */
+          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_SET)         return;
+					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_SET)         return;
           CMD_handlder_tx(TXBUF,0X07);	//报错修好
         }	
 	 }
 	 
-	 if(GPIO_Pin == GPIO_PIN_6)  //PE6,手闸二
+	 if(GPIO_Pin == GPIO_PIN_6)  //PE6,手闸二；下降沿
    {
 		 if(state == 1 && Gybpre_flag ==1)
 		{
-		expose_flag =1;
+			if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET)         return;
+			if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET)         return;
+			if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET)         return;
+			if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET)         return;
+	  	expose_flag =1;
 			CMD_handlder_tx(TXBUF,0X02);
 		 }
 	 }
@@ -533,7 +523,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			{
 				SynState=0;
 		    HAL_TIM_Base_Stop_IT(&htim4);  	//  停止定时器（避免计数干扰）
-				// HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET); //蜂鸣器
+				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET); //bell黄灯
 				HAL_TIM_PWM_Stop(&htim9, TIM_CHANNEL_2); //板子上的蜂鸣器
 				HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,GPIO_PIN_SET); //IO口通知高压板结束准备
 				CMD_handlder_tx(TXBUF,0X08);
