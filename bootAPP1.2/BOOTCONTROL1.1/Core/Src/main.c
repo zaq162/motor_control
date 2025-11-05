@@ -246,7 +246,7 @@ int main(void)
 				if( flashwr_flag==1)
 				{
 				    flashwr_flag=0;
-						Flash_WriteBuf(APP_address, g_decoder.buf, (uint32_t)g_decoder.len );
+					Flash_WriteBuf(APP_address, g_decoder.buf, ((uint32_t)g_decoder.len - 14) );//需要重新计算g_decoder.len，在unpack,c的地58行（我认为是整个数据包的长度）
 				  	CMD_handlder_tx(TXBUF0,0x01,0x06,0x00,0x01); 
 				}
 				
