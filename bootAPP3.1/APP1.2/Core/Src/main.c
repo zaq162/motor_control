@@ -249,14 +249,14 @@ while (1)
 			unpack_init(&g_decoder, &rbuf, cmd_buf);
 
 			// 注入数据
-			for (int i = 0; i < sizeof(rx3_buffer); i++) 
+			for (int i = 0; i < rx3_length; i++) 
 			{
 				ring_buf_write(&rbuf, rx3_buffer[i]);
 			}
 
 			// 处理数据
 			//while (ring_buf_avail(&rbuf) > 0) 
-			for (int i = 0; i < sizeof(rx3_buffer); i++) 
+			for (int i = 0; i <rx3_length; i++) 
 			{
 			unpack_fun(&g_decoder);
 			}
